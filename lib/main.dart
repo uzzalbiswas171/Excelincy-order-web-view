@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -14,6 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Excellency WebView',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
@@ -32,43 +32,46 @@ class WebViewHome extends StatefulWidget {
 class _WebViewHomeState extends State<WebViewHome> {
   int _currentIndex = 0;
 
-  // URLs for each tab
   final List<String> _urls = [
     'https://excellency-catering-restaurant-sweets.com/',
-    'https://excellency-catering-restaurant-sweets.com/cart/',
-    'https://excellency-catering-restaurant-sweets.com/favorit/',
+    'https://excellency-catering-restaurant-sweets.com/all-products',
+    'https://excellency-catering-restaurant-sweets.com/wishlist',
     'https://excellency-catering-restaurant-sweets.com/profile',
   ];
 
-  // One WebViewController per tab so state/history is preserved when switching tabs
   late final List<WebViewController> _controllers;
 
   @override
   void initState() {
     super.initState();
 
-    // // For Android, use the surface-based WebView implementation
+    // // Enable surface-based rendering for Android
     // if (Platform.isAndroid) {
     //   WebView.platform = SurfaceAndroidWebView();
     // }
 
+    // Create one controller per tab to preserve state
     _controllers = List.generate(_urls.length, (index) {
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(const Color(0x00000000))
+       // ..setZoomEnabled(false) // ✅ Disable zoom gestures
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onNavigationRequest: (NavigationRequest request) {
+              // Example: block YouTube links
+              if (request.url.startsWith('https://excellency-catering-restaurant-sweets.com/')) {
+                return NavigationDecision.prevent;
+              }
+              return NavigationDecision.navigate;
+            },
+          ),
+        )
         ..loadRequest(Uri.parse(_urls[index]));
       return controller;
     });
   }
 
-  @override
-  void dispose() {
-    // WebViewController does not require explicit dispose, but if you keep references
-    // to streams or other resources, clean them here.
-    super.dispose();
-  }
-
-  // Build a WebView widget for a given controller
+  // Build WebView widget
   Widget _buildWebView(WebViewController controller) {
     return WebViewWidget(controller: controller);
   }
@@ -76,13 +79,12 @@ class _WebViewHomeState extends State<WebViewHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Excellency Catering'),
-        centerTitle: true,
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _controllers.map(_buildWebView).toList(),
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _controllers.map(_buildWebView).toList(),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -100,8 +102,8 @@ class _WebViewHomeState extends State<WebViewHome> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
+            icon: Icon(Icons.production_quantity_limits),
+            label: 'Products',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite),
